@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Style global pour le tableau de bord du chauffeur */
+.bg-dashboard {
+    background-color: #f8fafc; /* Gris clair */
+}
+
+.card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+.card-header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.card-body {
+    margin-top: 20px;
+}
+
+.taxi-list-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e3f9f3;
+    border-radius: 8px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
