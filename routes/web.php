@@ -55,7 +55,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/taxis/{id}/edit', [TaxiController::class, 'edit'])->name('taxi.edit');
     Route::delete('/taxis/{taxi}', [TaxiController::class, 'destroy'])->name('taxi.destroy');
 
-
+   /* Route::get('/taxis/nearby', [TaxiController::class, 'nearby'])->name('taxis.nearby');
+Route::post('/taxi/update-position', [TaxiController::class, 'updatePosition'])
+    ->middleware('auth')
+    ->name('taxi.update-position');*/
     //page about 
     
 });

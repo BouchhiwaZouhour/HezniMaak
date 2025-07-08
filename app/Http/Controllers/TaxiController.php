@@ -100,4 +100,31 @@ public function destroy($id)
     }
     return redirect()->route('chauffeur.dashbord')->with('status', 'Taxi supprimé avec succès.');
     }
+
+// Ajoutez cette méthode dans TaxiController
+/*public function nearby(Request $request)
+{
+    $request->validate([
+        'lat' => 'required|numeric',
+        'lng' => 'required|numeric',
+        'radius' => 'sometimes|numeric|max:50' // rayon en km
+    ]);
+
+    $taxis = Taxi::where('disponible', true)
+                ->selectRaw("*, 
+                    (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(latitude)))) 
+                    AS distance", [
+                        $request->lat,
+                        $request->lng,
+                        $request->lat
+                    ])
+                ->having('distance', '<', $request->radius ?? 10)
+                ->orderBy('distance')
+                ->with('chauffeur')
+                ->get();
+
+    return response()->json($taxis);
+}*/
 }

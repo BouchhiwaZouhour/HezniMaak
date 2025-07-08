@@ -16,4 +16,5 @@ class Taxi extends Model {
     {
     return $this->hasMany(Reservation::class,'taxi_id');
     }
+    
 }

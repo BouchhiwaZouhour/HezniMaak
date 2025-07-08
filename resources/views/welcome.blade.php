@@ -5,8 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil - Taxi Réservation</title>
     @include('components.header-styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
     <style>
+         #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+
+        .address-selector {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .address-selector button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .address-selector button.active {
+            background: #ff8200;
+            color: white;
+        }
+
+        .address-selector button:not(.active) {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .geo-info-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .geo-info-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .geo-info-item i {
+            color: #ff8200;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .geo-info-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .geo-info-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
         /* Main Content Styles */
         .main-content {
             padding: 60px 0;
@@ -149,6 +219,11 @@
             .reservation-card {
                 padding: 20px;
             }
+            
+            .geo-info-container {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -175,26 +250,60 @@
                         
                         <!-- Search Form -->
                         @if(!isset($taxis))
-                            <form action="{{ route('taxi.recherche') }}" method="GET">
+                            <form action="{{ route('taxi.recherche') }}" method="GET" id="reservation-form">
                                 @csrf
-                                <div class="mb-3">
-                                    <label for="adresse_dep" class="form-label">Adresse de départ :</label>
-                                    <input type="text" class="form-control" name="adresse_dep" id="adresse_dep" placeholder="Entrez l'adresse de départ" required>
+                                <!-- Sélecteur d'adresse -->
+                            <div class="address-selector">
+                                <button type="button" id="select-departure" class="active">
+                                    <i class="fas fa-map-marker-alt"></i> Sélectionner le départ
+                                </button>
+                                <button type="button" id="select-arrival">
+                                    <i class="fas fa-flag"></i> Sélectionner l'arrivée
+                                </button>
+                            </div>
+                            
+                            <!-- Carte centrée sur la Tunisie -->
+                            <div id="map"></div>
+                            
+                            <!-- Info trajet -->
+                            <div class="geo-info-container">
+                                <div class="geo-info-item">
+                                    <i class="fas fa-road"></i>
+                                    <div class="geo-info-value" id="distance">-- km</div>
+                                    <div class="geo-info-label">Distance</div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="adresse_arr" class="form-label">Adresse d'arrivée :</label>
-                                    <input type="text" class="form-control" name="adresse_arr" id="adresse_arr" placeholder="Entrez l'adresse d'arrivée" required>
+                                <div class="geo-info-item">
+                                    <i class="fas fa-clock"></i>
+                                    <div class="geo-info-value" id="duration">-- min</div>
+                                    <div class="geo-info-label">Durée</div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="date_res" class="form-label">Date de réservation :</label>
-                                        <input type="date" class="form-control" name="date_res" id="date_res" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="heure_res" class="form-label">Heure de réservation :</label>
-                                        <input type="time" class="form-control" name="heure_res" id="heure_res" required>
-                                    </div>
+                            </div>
+                            
+                            <!-- Champs d'adresse -->
+                            <div class="mb-3">
+                                <label for="adresse_dep" class="form-label">Adresse de départ :</label>
+                                <input type="text" class="form-control" name="adresse_dep" id="adresse_dep" required >
+                                <input type="hidden" name="dep_lat" id="dep_lat">
+                                <input type="hidden" name="dep_lng" id="dep_lng">
+                            </div>
+                            <div class="mb-3">
+                                <label for="adresse_arr" class="form-label">Adresse d'arrivée :</label>
+                                <input type="text" class="form-control" name="adresse_arr" id="adresse_arr" required readonly>
+                                <input type="hidden" name="arr_lat" id="arr_lat">
+                                <input type="hidden" name="arr_lng" id="arr_lng">
+                            </div>
+                            
+                              <!-- Date et heure -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_res" class="form-label">Date de réservation :</label>
+                                    <input type="date" class="form-control" name="date_res" id="date_res" required>
                                 </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="heure_res" class="form-label">Heure de réservation :</label>
+                                    <input type="time" class="form-control" name="heure_res" id="heure_res" required>
+                                </div>
+                            </div>
                                 <button type="submit" class="btn btn-reserve">
                                     <i class="fas fa-search me-2"></i>Chercher un taxi
                                 </button>
@@ -258,15 +367,210 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    
     <script>
-        // Auto-dismiss alert after 5 seconds
-        setTimeout(function() {
-            var alert = document.getElementById('reservation-alert');
-            if (alert) {
-                var bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+    // Déclaration des variables globales
+    let map, departureMarker, arrivalMarker, routeLayer;
+    let currentSelection = 'departure';
+    const geocoder = L.Control.Geocoder.nominatim();
+    
+    // Fonction pour obtenir une adresse détaillée avec Nominatim
+    async function getDetailedAddress(latlng) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`);
+            const data = await response.json();
+            
+            if (data.address) {
+                const addr = data.address;
+                // Construction de l'adresse avec les éléments les plus précis
+                let addressParts = [];
+                
+                if (addr.road) addressParts.push(addr.road);
+                if (addr.village) addressParts.push(addr.village);
+                else if (addr.town) addressParts.push(addr.town);
+                else if (addr.city) addressParts.push(addr.city);
+                
+                if (addr.state && !addr.city) addressParts.push(addr.state);
+                
+                // Pour la Tunisie, on peut vouloir inclure le gouvernorat
+                if (addr.county && addr.county !== addr.city) addressParts.push(addr.county);
+                
+                // Ajouter le pays seulement si différent de Tunisie
+                if (addr.country && addr.country !== "Tunisie") addressParts.push(addr.country);
+                
+                return addressParts.join(", ");
             }
-        }, 5000);
-    </script>
+            return `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
+        } catch (error) {
+            console.error('Erreur de géocodage:', error);
+            return `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
+        }
+    }
+
+    // Fonction pour mettre à jour l'interface
+    function updateUI() {
+        const departureBtn = document.getElementById('select-departure');
+        const arrivalBtn = document.getElementById('select-arrival');
+        
+        if (departureBtn && arrivalBtn) {
+            departureBtn.classList.toggle('active', currentSelection === 'departure');
+            arrivalBtn.classList.toggle('active', currentSelection === 'arrival');
+        }
+    }
+
+    // Fonction pour calculer l'itinéraire
+    async function calculateRoute(start, end) {
+        try {
+            const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`);
+            const data = await response.json();
+            
+            if (data.routes && data.routes.length > 0) {
+                const route = data.routes[0];
+                
+                if (routeLayer) map.removeLayer(routeLayer);
+                
+                routeLayer = L.geoJSON(route.geometry, {
+                    style: {
+                        color: '#ff8200',
+                        weight: 5,
+                        opacity: 0.8
+                    }
+                }).addTo(map);
+                
+                // Mise à jour des infos de distance et durée
+                document.getElementById('distance').textContent = (route.distance / 1000).toFixed(1) + ' km';
+                document.getElementById('duration').textContent = Math.round(route.duration / 60) + ' min';
+                
+                const bounds = L.latLngBounds([start, end]);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        } catch (error) {
+            console.error('Erreur de calcul d\'itinéraire:', error);
+        }
+    }
+
+    // Fonction d'initialisation de la carte
+    function initMap() {
+        if (!document.getElementById('map')) {
+            console.error("Le conteneur de la carte n'existe pas");
+            return;
+        }
+        
+        map = L.map('map').setView([33.8869, 9.5375], 7);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        
+        setupMapClickHandler();
+        setupUIEvents();
+        locateUser();
+    }
+    
+    // Fonction principale exécutée quand le DOM est chargé
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('reservation-form')) {
+            initMap();
+        }
+        
+        const alert = document.getElementById('reservation-alert');
+        if (alert) {
+            setTimeout(() => {
+                new bootstrap.Alert(alert).close();
+            }, 5000);
+        }
+    });
+
+    // Fonction pour localiser l'utilisateur
+    function locateUser() {
+        map.locate({setView: false, maxZoom: 12});
+        
+        map.on('locationfound', function(e) {
+            L.marker(e.latlng).addTo(map)
+                .bindPopup("Votre position actuelle").openPopup();
+        });
+        
+        map.on('locationerror', function(e) {
+            console.warn("Erreur de géolocalisation:", e.message);
+        });
+    }
+    
+    // Fonction pour configurer les événements UI
+    function setupUIEvents() {
+        const departureBtn = document.getElementById('select-departure');
+        const arrivalBtn = document.getElementById('select-arrival');
+        
+        if (departureBtn && arrivalBtn) {
+            departureBtn.addEventListener('click', function() {
+                currentSelection = 'departure';
+                updateUI();
+            });
+            
+            arrivalBtn.addEventListener('click', function() {
+                currentSelection = 'arrival';
+                updateUI();
+            });
+        }
+    }
+    
+    // Fonction pour configurer le clic sur la carte
+    function setupMapClickHandler() {
+        map.off('click'); // Supprimer les anciens gestionnaires
+        
+        map.on('click', async function(e) {
+            const detailedAddress = await getDetailedAddress(e.latlng);
+            
+            if (currentSelection === 'departure') {
+                updateDeparture(e.latlng, detailedAddress);
+                currentSelection = 'arrival';
+            } else {
+                updateArrival(e.latlng, detailedAddress);
+                if (departureMarker) {
+                    calculateRoute(departureMarker.getLatLng(), e.latlng);
+                }
+            }
+            
+            updateUI();
+        });
+    }
+    
+    // Fonction pour mettre à jour le point de départ
+    function updateDeparture(latlng, address) {
+        document.getElementById('adresse_dep').value = address;
+        document.getElementById('dep_lat').value = latlng.lat;
+        document.getElementById('dep_lng').value = latlng.lng;
+        
+        if (departureMarker) map.removeLayer(departureMarker);
+        
+        departureMarker = L.marker(latlng, {
+            icon: L.divIcon({
+                className: 'departure-marker',
+                html: '<i class="fas fa-map-marker-alt" style="color: #ff8200; font-size: 32px;"></i>',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            })
+        }).addTo(map).bindPopup(`Départ: ${address}`);
+    }
+    
+    // Fonction pour mettre à jour le point d'arrivée
+    function updateArrival(latlng, address) {
+        document.getElementById('adresse_arr').value = address;
+        document.getElementById('arr_lat').value = latlng.lat;
+        document.getElementById('arr_lng').value = latlng.lng;
+        
+        if (arrivalMarker) map.removeLayer(arrivalMarker);
+        
+        arrivalMarker = L.marker(latlng, {
+            icon: L.divIcon({
+                className: 'arrival-marker',
+                html: '<i class="fas fa-flag" style="color: #28a745; font-size: 32px;"></i>',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            })
+        }).addTo(map).bindPopup(`Arrivée: ${address}`);
+    }
+</script>
 </body>
 </html>

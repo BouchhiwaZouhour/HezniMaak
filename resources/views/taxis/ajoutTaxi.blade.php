@@ -96,7 +96,7 @@
         </div>
     </div>
 
-   <style>
+    <style>
         .taxi-form-container {
             padding: 40px 0;
             background-color: #f8f9fa;
@@ -207,24 +207,6 @@
                 flex-direction: column;
             }
         }
-    </style> 
-    <script>
-    document.getElementById('image').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const preview = document.getElementById('image-preview');
-        const fileName = document.getElementById('file-name');
-        
-        fileName.textContent = file ? file.name : 'Sélectionner une image';
-        
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                preview.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
-            };
-            reader.readAsDataURL(file);
-        } else {
-            preview.innerHTML = '';
-        }
-    });
-     </script>
+    </style>
+    
 </x-app-layout>
